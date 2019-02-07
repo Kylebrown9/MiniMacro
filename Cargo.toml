@@ -1,5 +1,5 @@
 [package]
-name = "MASMacroTool"
+name = "mini_macro"
 version = "0.1.0"
 authors = ["kyleb <kylebrw@gmail.com>"]
 edition = "2018"
