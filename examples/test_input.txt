@@ -1,0 +1,5 @@
+inline block Test
+
+block Test
+ASDF
+end block
