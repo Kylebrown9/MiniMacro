@@ -4,7 +4,13 @@ use std::io::{ BufRead, BufReader, Write, BufWriter, Result, Error, ErrorKind };
 use std::collections::HashMap;
 
 fn main() {
-    let props = parse_args().unwrap();
+    if let Err(error) = run_command() {
+        println!("{}", error);
+    }
+}
+
+fn run_command() -> Result<()> {
+    let props = parse_args()?;
 
     let input_data: Vec<String> = BufReader::new(props.in_file)
         .lines()
@@ -15,11 +21,14 @@ fn main() {
         
     let output_data = expand_blocks(block_trimmed, block_defs);
 
-    let mut writer = BufWriter::new(props.out_file);
+    let _ = BufWriter::new(props.out_file)
+        .write(
+            output_data
+                .join("\n")
+                .as_bytes()
+        );
 
-    for line in output_data {
-        let _ = writer.write(line.as_bytes());
-    }
+    Ok(())
 }
 
 struct Props {
@@ -43,15 +52,11 @@ fn parse_args() -> Result<Props> {
 fn expand_blocks(data: Vec<String>, blocks: HashMap<String, Vec<String>>) -> Vec<String> {
     let mut result_lines = Vec::new();
 
-    for line in data {
-        if let Some(block) = blocks.get((&line).trim()) {
-            for block_line in block {
-                result_lines.push(block_line.clone());
-                result_lines.push(String::from("\n"));
-            }
+    for line in data.into_iter() {
+        if let Some(block) = blocks.get(line.trim()) {
+            result_lines.append(&mut block.clone());
         } else {
-            result_lines.push(line.clone());
-            result_lines.push(String::from("\n"));
+            result_lines.push(line);
         }
     }
         
@@ -59,40 +64,33 @@ fn expand_blocks(data: Vec<String>, blocks: HashMap<String, Vec<String>>) -> Vec
 }
 
 fn get_blocks(data: Vec<String>) -> (Vec<String>, HashMap<String, Vec<String>>) {
+    let mut data_iter = data.into_iter();
+    
+    let mut result_lines = Vec::new();
     let mut block_defs = HashMap::new();
 
-    let mut result_lines: Vec<String> = Vec::new();
+    while let Some(line) = data_iter.next() {
+        if line.starts_with("#define") {
+            let args: Vec<&str> = line.split(" ").collect();
 
-    let mut in_block = false;
-    let mut block_name = String::new();
-    let mut block_contents = Vec::new();
-
-    for line in data.iter() {
-        if in_block {
-            if line.starts_with("#end") {
-                block_defs.insert(block_name, block_contents);
-
-                block_name = String::new();
-                block_contents = Vec::new();
-                
-                in_block = false;
-            } else {
-                block_contents.push(line.clone());
+            if args.len() != 2 {
+                result_lines.push(line);
+                continue;
             }
-        } else {
-            if line.starts_with("#define") {
-                let args: Vec<&str> = line.split(" ").collect();
 
-                if args.len() == 2 {
-                    in_block = true;
-                    block_name = args[1].to_string();
-                    block_contents = Vec::new();
-                } else {
-                    result_lines.push(line.clone());
+            let block_name = args[1].to_string();
+            let mut block_contents = Vec::new();
+
+            while let Some(line) = data_iter.next() {
+                if line.starts_with("#end") {
+                    break;
                 }
-            } else {
-                result_lines.push(line.clone());
+                block_contents.push(line);
             }
+            
+            block_defs.insert(block_name, block_contents);
+        } else {
+            result_lines.push(line);
         }
     }
 
