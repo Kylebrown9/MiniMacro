@@ -1,5 +1,13 @@
-inline block Test
+Setup
 
-block Test
-ASDF
-end block
+
+TearDown
+
+#define Setup
+.model small
+.8086
+#end
+
+#define TearDown
+; TODO
+#end

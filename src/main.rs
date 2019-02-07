@@ -33,7 +33,7 @@ fn parse_args() -> Result<Props> {
     if args.len() == 3 {
         Ok(Props {
             in_file: File::open(args[1].clone())?,
-            out_file: File::open(args[2].clone())?
+            out_file: File::create(args[2].clone())?
         })
     } else {
         Err(Error::new(ErrorKind::InvalidInput, "Incorrect Number of args"))
@@ -44,21 +44,14 @@ fn expand_blocks(data: Vec<String>, blocks: HashMap<String, Vec<String>>) -> Vec
     let mut result_lines = Vec::new();
 
     for line in data {
-        if line.starts_with("inline block") {
-            let args: Vec<&str> = line.split(" ").collect();
-
-            if args.len() == 3 {
-                if let Some(block) = blocks.get(args[2]) {
-                    result_lines.append(&mut block.clone());
-                } else {
-                    result_lines.push(line.clone());
-                }
-            } else {
-                result_lines.push(line.clone());
+        if let Some(block) = blocks.get((&line).trim()) {
+            for block_line in block {
+                result_lines.push(block_line.clone());
+                result_lines.push(String::from("\n"));
             }
-
         } else {
-            result_lines.push(line);
+            result_lines.push(line.clone());
+            result_lines.push(String::from("\n"));
         }
     }
         
@@ -76,7 +69,7 @@ fn get_blocks(data: Vec<String>) -> (Vec<String>, HashMap<String, Vec<String>>) 
 
     for line in data.iter() {
         if in_block {
-            if line.starts_with("end block") {
+            if line.starts_with("#end") {
                 block_defs.insert(block_name, block_contents);
 
                 block_name = String::new();
@@ -87,7 +80,7 @@ fn get_blocks(data: Vec<String>) -> (Vec<String>, HashMap<String, Vec<String>>) 
                 block_contents.push(line.clone());
             }
         } else {
-            if line.starts_with("block") {
+            if line.starts_with("#define") {
                 let args: Vec<&str> = line.split(" ").collect();
 
                 if args.len() == 2 {
